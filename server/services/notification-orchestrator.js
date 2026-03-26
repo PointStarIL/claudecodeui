@@ -118,7 +118,8 @@ function buildPushBody(event) {
     'run.stopped': event.meta?.stopReason || 'Run Stopped: The run has stopped',
     'run.failed': event.meta?.error ? `Run Failed: ${event.meta.error}` : 'Run Failed: The run encountered an error',
     'agent.notification': event.meta?.message ? String(event.meta.message) : 'You have a new notification',
-    'push.enabled': 'Push notifications are now enabled!'
+    'push.enabled': 'Push notifications are now enabled!',
+    'server.disconnected': event.meta?.message || 'A server has disconnected'
   };
   const providerLabel = PROVIDER_LABELS[event.provider] || 'Assistant';
   const sessionName = resolveSessionName(event);
@@ -219,9 +220,25 @@ function notifyRunFailed({ userId, provider, sessionId = null, error, sessionNam
   });
 }
 
+function notifyServerDisconnected({ userId, serverName, serverId }) {
+  notifyUserIfEnabled({
+    userId,
+    event: createNotificationEvent({
+      provider: 'system',
+      sessionId: null,
+      kind: 'error',
+      code: 'server.disconnected',
+      meta: { serverName, serverId, message: `Server "${serverName}" disconnected` },
+      severity: 'warning',
+      dedupeKey: `system:server:disconnected:${serverId}`
+    })
+  });
+}
+
 export {
   createNotificationEvent,
   notifyUserIfEnabled,
   notifyRunStopped,
-  notifyRunFailed
+  notifyRunFailed,
+  notifyServerDisconnected
 };

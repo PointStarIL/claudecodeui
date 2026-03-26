@@ -66,10 +66,13 @@ import codexRoutes from './routes/codex.js';
 import geminiRoutes from './routes/gemini.js';
 import pluginsRoutes from './routes/plugins.js';
 import messagesRoutes from './routes/messages.js';
+import serversRoutes from './routes/servers.js';
 import { createNormalizedMessage } from './providers/types.js';
 import { startEnabledPluginServers, stopAllPlugins, getPluginPort } from './utils/plugin-process-manager.js';
-import { initializeDatabase, sessionNamesDb, applyCustomSessionNames } from './database/db.js';
+import { initializeDatabase, sessionNamesDb, applyCustomSessionNames, userDb } from './database/db.js';
 import { configureWebPush } from './services/vapid-keys.js';
+import connectionManager from './services/server-connection.js';
+import { notifyServerDisconnected } from './services/notification-orchestrator.js';
 import { validateApiKey, authenticateToken, authenticateWebSocket } from './middleware/auth.js';
 import { IS_PLATFORM } from './constants/config.js';
 import { getConnectableHost } from '../shared/networkHosts.js';
@@ -400,6 +403,9 @@ app.use('/api/plugins', authenticateToken, pluginsRoutes);
 
 // Unified session messages route (protected)
 app.use('/api/sessions', authenticateToken, messagesRoutes);
+
+// Servers API Routes (protected) — multi-server management
+app.use('/api/servers', authenticateToken, serversRoutes);
 
 // Agent API Routes (uses API key authentication)
 app.use('/api/agent', agentRoutes);
@@ -1432,6 +1438,10 @@ wss.on('connection', (ws, request) => {
         handleShellConnection(ws);
     } else if (pathname === '/ws') {
         handleChatConnection(ws, request);
+    } else if (pathname.startsWith('/ws/server/')) {
+        // Multi-server relay: /ws/server/:serverId
+        const serverId = pathname.replace('/ws/server/', '');
+        handleRemoteServerRelay(ws, serverId);
     } else if (pathname.startsWith('/plugin-ws/')) {
         handlePluginWsProxy(ws, pathname);
     } else {
@@ -1623,6 +1633,42 @@ function handleChatConnection(ws, request) {
 }
 
 // Handle shell WebSocket connections
+/**
+ * Relay WebSocket between the browser client and a remote Server Agent.
+ * Messages are forwarded bidirectionally as-is.
+ */
+function handleRemoteServerRelay(clientWs, serverId) {
+    const conn = connectionManager.get(serverId);
+    if (!conn || conn.status !== 'connected') {
+        clientWs.send(JSON.stringify({ type: 'error', message: `Server ${serverId} is not connected` }));
+        clientWs.close();
+        return;
+    }
+
+    console.log(`[Hub] Relaying WebSocket to agent: ${conn.config.name}`);
+
+    // Forward messages from client → agent
+    clientWs.on('message', (data) => {
+        conn.send(data.toString());
+    });
+
+    // Forward messages from agent → client
+    const unsubscribe = conn.onMessage((data) => {
+        if (clientWs.readyState === WebSocket.OPEN) {
+            clientWs.send(data.toString());
+        }
+    });
+
+    clientWs.on('close', () => {
+        unsubscribe();
+        console.log(`[Hub] Relay closed for agent: ${conn.config.name}`);
+    });
+
+    clientWs.on('error', () => {
+        unsubscribe();
+    });
+}
+
 function handleShellConnection(ws) {
     console.log('🐚 Shell client connected');
     let shellProcess = null;
@@ -2524,6 +2570,36 @@ async function startServer() {
 
         // Configure Web Push (VAPID keys)
         configureWebPush();
+
+        // Initialize multi-server connections (Hub mode)
+        await connectionManager.init();
+        connectionManager.onStatusChange((conn) => {
+            const msg = JSON.stringify({
+                type: 'server_status_changed',
+                serverId: conn.config.id,
+                serverName: conn.config.name,
+                status: conn.status,
+            });
+            connectedClients.forEach(client => {
+                if (client.readyState === WebSocket.OPEN) {
+                    client.send(msg);
+                }
+            });
+
+            // Send push notification when a server disconnects
+            if (conn.status === 'disconnected' || conn.status === 'error') {
+                try {
+                    const firstUser = userDb.getFirstUser();
+                    if (firstUser) {
+                        notifyServerDisconnected({
+                            userId: firstUser.id,
+                            serverName: conn.config.name,
+                            serverId: conn.config.id,
+                        });
+                    }
+                } catch { /* notification is best-effort */ }
+            }
+        });
 
         // Check if running in production mode (dist folder exists)
         const distIndexPath = path.join(__dirname, '../dist/index.html');

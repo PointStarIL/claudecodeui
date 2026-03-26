@@ -41,6 +41,10 @@ export interface Project {
   geminiSessions?: ProjectSession[];
   sessionMeta?: ProjectSessionMeta;
   taskmaster?: ProjectTaskmasterInfo;
+  /** Multi-server: ID of the server this project comes from */
+  serverId?: string;
+  /** Multi-server: display name of the server */
+  serverName?: string;
   [key: string]: unknown;
 }
 

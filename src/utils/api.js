@@ -152,6 +152,34 @@ export const api = {
       headers: {}, // Let browser set Content-Type for FormData
     }),
 
+  // Multi-server management endpoints
+  servers: {
+    list: () => authenticatedFetch('/api/servers'),
+    get: (id) => authenticatedFetch(`/api/servers/${id}`),
+    create: (data) => authenticatedFetch('/api/servers', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+    update: (id, data) => authenticatedFetch(`/api/servers/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+    delete: (id) => authenticatedFetch(`/api/servers/${id}`, {
+      method: 'DELETE',
+    }),
+    test: (id) => authenticatedFetch(`/api/servers/${id}/test`, {
+      method: 'POST',
+    }),
+    statuses: () => authenticatedFetch('/api/servers/statuses'),
+    projects: (serverId) => authenticatedFetch(`/api/servers/${serverId}/projects`),
+    sessions: (serverId, projectName, limit = 5, offset = 0) =>
+      authenticatedFetch(`/api/servers/${serverId}/projects/${projectName}/sessions?limit=${limit}&offset=${offset}`),
+    messages: (serverId, sessionId, query = {}) => {
+      const params = new URLSearchParams(query);
+      return authenticatedFetch(`/api/servers/${serverId}/sessions/${sessionId}/messages?${params.toString()}`);
+    },
+  },
+
   // TaskMaster endpoints
   taskmaster: {
     // Initialize TaskMaster in a project

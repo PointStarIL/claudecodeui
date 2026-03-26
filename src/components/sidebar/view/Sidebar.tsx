@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDeviceSettings } from '../../../hooks/useDeviceSettings';
 import { useVersionCheck } from '../../../hooks/useVersionCheck';
@@ -8,6 +8,7 @@ import { useTaskMaster } from '../../../contexts/TaskMasterContext';
 import { useTasksSettings } from '../../../contexts/TasksSettingsContext';
 import type { Project, SessionProvider } from '../../../types/app';
 import type { MCPServerStatus, SidebarProps } from '../types/types';
+import ServerManagement from '../../servers/ServerManagement';
 import SidebarCollapsed from './subcomponents/SidebarCollapsed';
 import SidebarContent from './subcomponents/SidebarContent';
 import SidebarModals from './subcomponents/SidebarModals';
@@ -122,6 +123,8 @@ function Sidebar({
     document.documentElement.classList.toggle('pwa-mode', isPWA);
     document.body.classList.toggle('pwa-mode', isPWA);
   }, [isPWA]);
+
+  const [showServerManagement, setShowServerManagement] = useState(false);
 
   const handleProjectCreated = () => {
     if (window.refreshProjects) {
@@ -269,11 +272,16 @@ function Sidebar({
             onShowVersionModal={() => setShowVersionModal(true)}
             onShowSettings={onShowSettings}
             projectListProps={projectListProps}
+            onManageServers={() => setShowServerManagement(true)}
             t={t}
           />
         </>
       )}
 
+      <ServerManagement
+        open={showServerManagement}
+        onClose={() => setShowServerManagement(false)}
+      />
     </>
   );
 }

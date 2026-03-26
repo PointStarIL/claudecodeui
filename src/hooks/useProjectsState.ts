@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 import { api } from '../utils/api';
+import { useServers } from '../contexts/ServerContext';
 import type {
   AppSocketMessage,
   AppTab,
@@ -138,6 +139,10 @@ export function useProjectsState({
   const [selectedSession, setSelectedSession] = useState<ProjectSession | null>(null);
   const [activeTab, setActiveTab] = useState<AppTab>(readPersistedTab);
 
+  // Multi-server support: fetch server context to route API calls through agent proxy
+  const { selectedServerId, isMultiServerMode, servers: allServers } = useServers();
+  const connectedServers = allServers?.filter((s) => s.status === 'connected') ?? [];
+
   useEffect(() => {
     try {
       localStorage.setItem('activeTab', activeTab);
@@ -161,8 +166,42 @@ export function useProjectsState({
       if (showLoadingState) {
         setIsLoadingProjects(true);
       }
-      const response = await api.projects();
-      const projectData = (await response.json()) as Project[];
+
+      let projectData: Project[];
+
+      if (isMultiServerMode && selectedServerId) {
+        // Fetch projects from a specific remote server via hub proxy
+        const response = await api.servers.projects(selectedServerId);
+        projectData = (await response.json()) as Project[];
+      } else if (isMultiServerMode && !selectedServerId) {
+        // "All Servers" mode — aggregate local + all connected remote servers
+        const localResponse = await api.projects();
+        const localProjects = (await localResponse.json()) as Project[];
+        // Tag local projects
+        const taggedLocal = localProjects.map((p: Project) => ({
+          ...p,
+          serverId: 'local',
+          serverName: 'Local',
+        }));
+
+        // Fetch from all connected remote servers in parallel
+        const remoteResults = await Promise.allSettled(
+          connectedServers.map(async (srv) => {
+            const res = await api.servers.projects(srv.id);
+            return (await res.json()) as Project[];
+          })
+        );
+
+        const remoteProjects = remoteResults
+          .filter((r): r is PromiseFulfilledResult<Project[]> => r.status === 'fulfilled')
+          .flatMap((r) => r.value);
+
+        projectData = [...taggedLocal, ...remoteProjects];
+      } else {
+        // Single-server mode (no multi-server configured) — original behavior
+        const response = await api.projects();
+        projectData = (await response.json()) as Project[];
+      }
 
       setProjects((prevProjects) => {
         if (prevProjects.length === 0) {
@@ -180,7 +219,8 @@ export function useProjectsState({
         setIsLoadingProjects(false);
       }
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedServerId, isMultiServerMode, connectedServers.length]);
 
   const refreshProjectsSilently = useCallback(async () => {
     // Keep chat view stable while still syncing sidebar/session metadata in background.
@@ -448,8 +488,14 @@ export function useProjectsState({
 
   const handleSidebarRefresh = useCallback(async () => {
     try {
-      const response = await api.projects();
-      const freshProjects = (await response.json()) as Project[];
+      let freshProjects: Project[];
+      if (isMultiServerMode && selectedServerId) {
+        const response = await api.servers.projects(selectedServerId);
+        freshProjects = (await response.json()) as Project[];
+      } else {
+        const response = await api.projects();
+        freshProjects = (await response.json()) as Project[];
+      }
 
       setProjects((prevProjects) =>
         projectsHaveChanges(prevProjects, freshProjects, true) ? freshProjects : prevProjects,
@@ -490,7 +536,7 @@ export function useProjectsState({
     } catch (error) {
       console.error('Error refreshing sidebar:', error);
     }
-  }, [selectedProject, selectedSession]);
+  }, [selectedProject, selectedSession, isMultiServerMode, selectedServerId]);
 
   const handleProjectDelete = useCallback(
     (projectName: string) => {

@@ -148,6 +148,25 @@ const runMigrations = () => {
     )`);
     db.exec('CREATE INDEX IF NOT EXISTS idx_session_names_lookup ON session_names(session_id, provider)');
 
+    // Create servers table for multi-server support
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS servers (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        host TEXT NOT NULL,
+        port INTEGER NOT NULL DEFAULT 3001,
+        connection_type TEXT NOT NULL DEFAULT 'websocket',
+        ssh_user TEXT,
+        ssh_key_path TEXT,
+        ssh_tunnel_port INTEGER,
+        api_key TEXT,
+        ssl INTEGER NOT NULL DEFAULT 0,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     console.log('Database migrations completed successfully');
   } catch (error) {
     console.error('Error running migrations:', error.message);

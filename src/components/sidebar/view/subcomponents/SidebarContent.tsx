@@ -5,6 +5,7 @@ import { ScrollArea } from '../../../../shared/view/ui';
 import type { Project } from '../../../../types/app';
 import type { ReleaseInfo } from '../../../../types/sharedTypes';
 import type { ConversationSearchResults, SearchProgress } from '../../hooks/useSidebarController';
+import ServerPicker from '../../../servers/ServerPicker';
 import SidebarFooter from './SidebarFooter';
 import SidebarHeader from './SidebarHeader';
 import SidebarProjectList, { type SidebarProjectListProps } from './SidebarProjectList';
@@ -59,6 +60,7 @@ type SidebarContentProps = {
   onShowVersionModal: () => void;
   onShowSettings: () => void;
   projectListProps: SidebarProjectListProps;
+  onManageServers: () => void;
   t: TFunction;
 };
 
@@ -86,6 +88,7 @@ export default function SidebarContent({
   onShowVersionModal,
   onShowSettings,
   projectListProps,
+  onManageServers,
   t,
 }: SidebarContentProps) {
   const showConversationSearch = searchMode === 'conversations' && searchFilter.trim().length >= 2;
@@ -96,6 +99,7 @@ export default function SidebarContent({
       className="flex h-full flex-col bg-background/80 backdrop-blur-sm md:w-72 md:select-none"
       style={{}}
     >
+      <ServerPicker onManageServers={onManageServers} />
       <SidebarHeader
         isPWA={isPWA}
         isMobile={isMobile}

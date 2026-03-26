@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  # Hub — central dashboard with frontend and backend
+  hub:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    volumes:
+      - hub-data:/data
+    environment:
+      - SERVER_PORT=3001
+      - DATABASE_PATH=/data/auth.db
+    restart: unless-stopped
+
+  # Agent — lightweight server-side process (deploy one per machine)
+  # Uncomment and configure for each server you want to connect
+  # agent-local:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.agent
+  #   ports:
+  #     - "3002:3002"
+  #   volumes:
+  #     - ${HOME}/.claude:/root/.claude:ro
+  #   environment:
+  #     - AGENT_PORT=3002
+  #     - AGENT_API_KEY=your-secret-key-here
+  #   restart: unless-stopped
+
+volumes:
+  hub-data:

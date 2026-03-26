@@ -1,5 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import type { TFunction } from 'i18next';
+import { Server } from 'lucide-react';
 import type { LoadingProgress, Project, ProjectSession, SessionProvider } from '../../../../types/app';
 import type {
   LoadingSessionsByProject,
@@ -112,48 +113,80 @@ export default function SidebarProjectList({
 
   const showProjects = !isLoading && projects.length > 0 && filteredProjects.length > 0;
 
+  // Group projects by server when multiple servers have projects
+  const hasMultipleServers = filteredProjects.some((p) => p.serverId);
+  const groupedByServer = useMemo(() => {
+    if (!hasMultipleServers) return null;
+
+    const groups = new Map<string, { serverName: string; projects: Project[] }>();
+    for (const project of filteredProjects) {
+      const sId = (project.serverId as string) || 'local';
+      const sName = (project.serverName as string) || 'Local';
+      if (!groups.has(sId)) {
+        groups.set(sId, { serverName: sName, projects: [] });
+      }
+      groups.get(sId)!.projects.push(project);
+    }
+    return groups;
+  }, [filteredProjects, hasMultipleServers]);
+
+  const renderProjectItem = (project: Project) => (
+    <SidebarProjectItem
+      key={`${project.serverId || 'local'}-${project.name}`}
+      project={project}
+      selectedProject={selectedProject}
+      selectedSession={selectedSession}
+      isExpanded={expandedProjects.has(project.name)}
+      isDeleting={deletingProjects.has(project.name)}
+      isStarred={isProjectStarred(project.name)}
+      editingProject={editingProject}
+      editingName={editingName}
+      sessions={getProjectSessions(project)}
+      initialSessionsLoaded={initialSessionsLoaded.has(project.name)}
+      isLoadingSessions={Boolean(loadingSessions[project.name])}
+      currentTime={currentTime}
+      editingSession={editingSession}
+      editingSessionName={editingSessionName}
+      tasksEnabled={tasksEnabled}
+      mcpServerStatus={mcpServerStatus}
+      onEditingNameChange={onEditingNameChange}
+      onToggleProject={onToggleProject}
+      onProjectSelect={onProjectSelect}
+      onToggleStarProject={onToggleStarProject}
+      onStartEditingProject={onStartEditingProject}
+      onCancelEditingProject={onCancelEditingProject}
+      onSaveProjectName={onSaveProjectName}
+      onDeleteProject={onDeleteProject}
+      onSessionSelect={onSessionSelect}
+      onDeleteSession={onDeleteSession}
+      onLoadMoreSessions={onLoadMoreSessions}
+      onNewSession={onNewSession}
+      onEditingSessionNameChange={onEditingSessionNameChange}
+      onStartEditingSession={onStartEditingSession}
+      onCancelEditingSession={onCancelEditingSession}
+      onSaveEditingSession={onSaveEditingSession}
+      t={t}
+    />
+  );
+
   return (
     <div className="pb-safe-area-inset-bottom md:space-y-1">
       {!showProjects
         ? state
-        : filteredProjects.map((project) => (
-            <SidebarProjectItem
-              key={project.name}
-              project={project}
-              selectedProject={selectedProject}
-              selectedSession={selectedSession}
-              isExpanded={expandedProjects.has(project.name)}
-              isDeleting={deletingProjects.has(project.name)}
-              isStarred={isProjectStarred(project.name)}
-              editingProject={editingProject}
-              editingName={editingName}
-              sessions={getProjectSessions(project)}
-              initialSessionsLoaded={initialSessionsLoaded.has(project.name)}
-              isLoadingSessions={Boolean(loadingSessions[project.name])}
-              currentTime={currentTime}
-              editingSession={editingSession}
-              editingSessionName={editingSessionName}
-              tasksEnabled={tasksEnabled}
-              mcpServerStatus={mcpServerStatus}
-              onEditingNameChange={onEditingNameChange}
-              onToggleProject={onToggleProject}
-              onProjectSelect={onProjectSelect}
-              onToggleStarProject={onToggleStarProject}
-              onStartEditingProject={onStartEditingProject}
-              onCancelEditingProject={onCancelEditingProject}
-              onSaveProjectName={onSaveProjectName}
-              onDeleteProject={onDeleteProject}
-              onSessionSelect={onSessionSelect}
-              onDeleteSession={onDeleteSession}
-              onLoadMoreSessions={onLoadMoreSessions}
-              onNewSession={onNewSession}
-              onEditingSessionNameChange={onEditingSessionNameChange}
-              onStartEditingSession={onStartEditingSession}
-              onCancelEditingSession={onCancelEditingSession}
-              onSaveEditingSession={onSaveEditingSession}
-              t={t}
-            />
-          ))}
+        : groupedByServer
+          ? Array.from(groupedByServer.entries()).map(([serverId, { serverName, projects: serverProjects }]) => (
+              <div key={serverId}>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <Server className="h-3 w-3" />
+                  <span className="truncate">{serverName}</span>
+                  <span className="ml-auto text-[10px] font-normal tabular-nums">
+                    {serverProjects.length}
+                  </span>
+                </div>
+                {serverProjects.map(renderProjectItem)}
+              </div>
+            ))
+          : filteredProjects.map(renderProjectItem)}
     </div>
   );
 }

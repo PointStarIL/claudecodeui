@@ -1,0 +1,21 @@
+FROM node:20-slim
+
+# Install build tools for native modules (better-sqlite3, node-pty)
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci --production
+
+COPY server/ server/
+COPY shared/ shared/
+
+ENV AGENT_PORT=3002
+EXPOSE 3002
+
+CMD ["node", "server/agent/index.js"]
