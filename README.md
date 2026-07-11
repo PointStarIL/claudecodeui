@@ -103,46 +103,23 @@ The npm package above installs upstream. This fork adds a per-block **RTL fix** 
 bash <(curl -fsSL https://raw.githubusercontent.com/PointStarIL/claudecodeui/fix/rtl-chat/deploy/manage.sh)
 ```
 
-Prefer a non-interactive one-shot install? Use the installer directly:
+The manager installs Node.js 22 + build tools if missing, clones/builds the repo, and registers a `systemd` service that auto-starts on boot. It runs as **your** user so the app can reach your `claude` CLI, credentials, and projects. After install, the UI is at `http://<host-ip>:3008`.
+
+The same script also runs **non-interactively** for automation — pass a command:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/PointStarIL/claudecodeui/fix/rtl-chat/deploy/install.sh | bash
-```
+RAW=https://raw.githubusercontent.com/PointStarIL/claudecodeui/fix/rtl-chat/deploy/manage.sh
 
-The script installs Node.js 22 + build tools if missing, clones/builds the repo, and registers a `systemd` service that auto-starts on boot. It runs as **your** user so the app can reach your `claude` CLI, credentials, and projects.
+curl -fsSL $RAW | bash -s -- install                 # install / update
+curl -fsSL $RAW | bash -s -- status                  # status | logs | restart | stop | start
+curl -fsSL $RAW | bash -s -- uninstall               # remove the service (keeps source + data)
 
-Override any default with an env var:
-
-```bash
-# custom port and install location
-PORT=4000 INSTALL_DIR=~/apps/cloudcli \
-  bash <(curl -fsSL https://raw.githubusercontent.com/PointStarIL/claudecodeui/fix/rtl-chat/deploy/install.sh)
-```
-
-After install, the UI is at `http://<host-ip>:3008`. Manage it with:
-
-```bash
-sudo systemctl restart|stop|status cloudcli   # control the service
-journalctl -u cloudcli -f                      # follow logs
-```
-
-**Update to the latest build:**
-
-```bash
-cd ~/claudecodeui && git pull && npm ci && npm run build && sudo systemctl restart cloudcli
+# custom port / location, or full removal (env vars go before `bash`, not `curl`):
+curl -fsSL $RAW | PORT=4000 INSTALL_DIR=~/apps/cloudcli bash -s -- install
+curl -fsSL $RAW | PURGE_SOURCE=1 PURGE_DATA=1 bash -s -- uninstall
 ```
 
 > **Prerequisite:** [Claude Code](https://cloudcli.ai/docs) must be installed and authenticated (`claude login`) for the same user — the web UI drives the `claude` CLI.
-
-**Uninstall** (removes the service only; keeps your source and data by default):
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/PointStarIL/claudecodeui/fix/rtl-chat/deploy/uninstall.sh | bash
-
-# full removal, including source + app data:
-PURGE_SOURCE=1 PURGE_DATA=1 \
-  bash <(curl -fsSL https://raw.githubusercontent.com/PointStarIL/claudecodeui/fix/rtl-chat/deploy/uninstall.sh)
-```
 
 #### Docker Sandboxes (Experimental)
 
