@@ -97,7 +97,13 @@ Visit the **[documentation →](https://cloudcli.ai/docs)** for full configurati
 
 #### From source as a systemd service (this fork — includes the Hebrew/RTL chat fix)
 
-The npm package above installs upstream. This fork adds a per-block **RTL fix** so Hebrew/Arabic chat renders correctly. To run it from source and keep it running across reboots on a Debian/Ubuntu machine, use the one-command installer:
+The npm package above installs upstream. This fork adds a per-block **RTL fix** so Hebrew/Arabic chat renders correctly. To run it from source and keep it running across reboots on a Debian/Ubuntu machine, use the interactive manager — one command that offers install / update / status / logs / restart / uninstall from a menu:
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/PointStarIL/claudecodeui/fix/rtl-chat/deploy/manage.sh)
+```
+
+Prefer a non-interactive one-shot install? Use the installer directly:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/PointStarIL/claudecodeui/fix/rtl-chat/deploy/install.sh | bash
