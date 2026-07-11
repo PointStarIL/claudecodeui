@@ -35,7 +35,9 @@ die()  { printf '%s[x]%s %s\n'  "$c_red"  "$c_off" "$*" >&2; exit 1; }
 command -v sudo >/dev/null || die "sudo is required."
 
 ask() { local prompt="$1" ans; printf '%s' "$prompt" >/dev/tty; read -r ans </dev/tty; printf '%s' "$ans"; }
-is_installed() { systemctl list-unit-files 2>/dev/null | grep -q "^${SERVICE_NAME}.service"; }
+# The installer always writes the unit here, so a file check is the reliable signal
+# (avoids a `systemctl … | grep -q` pipe, which trips SIGPIPE under `set -o pipefail`).
+is_installed() { [ -f "$UNIT" ]; }
 
 # =============================================================================
 # Core actions
@@ -112,7 +114,7 @@ UNITFILE
 }
 
 do_uninstall() {
-  if is_installed; then
+  if is_installed || systemctl is-active --quiet "$SERVICE_NAME" 2>/dev/null; then
     log "Stopping and disabling ${SERVICE_NAME}..."
     sudo systemctl disable --now "$SERVICE_NAME" 2>/dev/null || true
   else
