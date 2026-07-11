@@ -70,6 +70,7 @@ const CodeBlock = ({ node, inline, className, children, ...props }: CodeBlockPro
   if (shouldInline) {
     return (
       <code
+        dir="ltr"
         className={`whitespace-pre-wrap break-words rounded-md border border-gray-200 bg-gray-100 px-1.5 py-0.5 font-mono text-[0.9em] text-gray-900 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-100 ${className || ''
           }`}
         {...props}
@@ -83,7 +84,7 @@ const CodeBlock = ({ node, inline, className, children, ...props }: CodeBlockPro
   const language = match ? match[1] : 'text';
 
   return (
-    <div className="group relative my-2">
+    <div dir="ltr" className="group relative my-2">
       {language && language !== 'text' && (
         <div className="absolute left-3 top-2 z-10 text-xs font-medium uppercase text-gray-400">{language}</div>
       )}
@@ -164,11 +165,23 @@ const markdownComponents = {
   // dark-themed <pre> shell that would frame the block.
   pre: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
   blockquote: ({ children }: { children?: React.ReactNode }) => (
-    <blockquote className="my-2 border-l-4 border-gray-300 pl-4 italic text-gray-600 dark:border-gray-600 dark:text-gray-400">
+    // dir="auto": each block detects its own direction from its first strong
+    // character, so Hebrew/Arabic render RTL and English/code stay LTR — even
+    // within a single mixed-language message.
+    <blockquote dir="auto" className="my-2 border-s-4 border-gray-300 ps-4 italic text-gray-600 dark:border-gray-600 dark:text-gray-400">
       {children}
     </blockquote>
   ),
-  p: ({ children }: { children?: React.ReactNode }) => <div className="mb-2 last:mb-0">{children}</div>,
+  p: ({ children }: { children?: React.ReactNode }) => <div dir="auto" className="mb-2 last:mb-0">{children}</div>,
+  h1: ({ children }: { children?: React.ReactNode }) => <h1 dir="auto">{children}</h1>,
+  h2: ({ children }: { children?: React.ReactNode }) => <h2 dir="auto">{children}</h2>,
+  h3: ({ children }: { children?: React.ReactNode }) => <h3 dir="auto">{children}</h3>,
+  h4: ({ children }: { children?: React.ReactNode }) => <h4 dir="auto">{children}</h4>,
+  h5: ({ children }: { children?: React.ReactNode }) => <h5 dir="auto">{children}</h5>,
+  h6: ({ children }: { children?: React.ReactNode }) => <h6 dir="auto">{children}</h6>,
+  ul: ({ children }: { children?: React.ReactNode }) => <ul dir="auto">{children}</ul>,
+  ol: ({ children }: { children?: React.ReactNode }) => <ol dir="auto">{children}</ol>,
+  li: ({ children }: { children?: React.ReactNode }) => <li dir="auto">{children}</li>,
   table: ({ children }: { children?: React.ReactNode }) => (
     <div className="my-2 overflow-x-auto">
       <table className="min-w-full border-collapse border border-gray-200 dark:border-gray-700">{children}</table>
@@ -176,10 +189,10 @@ const markdownComponents = {
   ),
   thead: ({ children }: { children?: React.ReactNode }) => <thead className="bg-gray-50 dark:bg-gray-800">{children}</thead>,
   th: ({ children }: { children?: React.ReactNode }) => (
-    <th className="border border-gray-200 px-3 py-2 text-left text-sm font-semibold dark:border-gray-700">{children}</th>
+    <th dir="auto" className="border border-gray-200 px-3 py-2 text-start text-sm font-semibold dark:border-gray-700">{children}</th>
   ),
   td: ({ children }: { children?: React.ReactNode }) => (
-    <td className="border border-gray-200 px-3 py-2 align-top text-sm dark:border-gray-700">{children}</td>
+    <td dir="auto" className="border border-gray-200 px-3 py-2 align-top text-sm dark:border-gray-700">{children}</td>
   ),
 };
 
@@ -229,7 +242,7 @@ export function Markdown({ children, className }: MarkdownProps) {
   );
 
   return (
-    <div className={className}>
+    <div dir="auto" className={className}>
       <ReactMarkdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins} components={components as any}>
         {content}
       </ReactMarkdown>
