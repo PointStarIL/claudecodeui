@@ -1,0 +1,9 @@
+.git
+node_modules
+dist
+dist-server
+.desktop-build
+*.log
+npm-debug.log*
+.env
+.env.local
