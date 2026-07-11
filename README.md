@@ -95,6 +95,39 @@ Open `http://localhost:3001` — all your existing sessions are discovered autom
 
 Visit the **[documentation →](https://cloudcli.ai/docs)** for full configuration options, PM2, remote server setup and more.
 
+#### From source as a systemd service (this fork — includes the Hebrew/RTL chat fix)
+
+The npm package above installs upstream. This fork adds a per-block **RTL fix** so Hebrew/Arabic chat renders correctly. To run it from source and keep it running across reboots on a Debian/Ubuntu machine, use the one-command installer:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/PointStarIL/claudecodeui/fix/rtl-chat/deploy/install.sh | bash
+```
+
+The script installs Node.js 22 + build tools if missing, clones/builds the repo, and registers a `systemd` service that auto-starts on boot. It runs as **your** user so the app can reach your `claude` CLI, credentials, and projects.
+
+Override any default with an env var:
+
+```bash
+# custom port and install location
+PORT=4000 INSTALL_DIR=~/apps/cloudcli \
+  bash <(curl -fsSL https://raw.githubusercontent.com/PointStarIL/claudecodeui/fix/rtl-chat/deploy/install.sh)
+```
+
+After install, the UI is at `http://<host-ip>:3008`. Manage it with:
+
+```bash
+sudo systemctl restart|stop|status cloudcli   # control the service
+journalctl -u cloudcli -f                      # follow logs
+```
+
+**Update to the latest build:**
+
+```bash
+cd ~/claudecodeui && git pull && npm ci && npm run build && sudo systemctl restart cloudcli
+```
+
+> **Prerequisite:** [Claude Code](https://cloudcli.ai/docs) must be installed and authenticated (`claude login`) for the same user — the web UI drives the `claude` CLI.
+
 #### Docker Sandboxes (Experimental)
 
 Run agents in isolated sandboxes with hypervisor-level isolation. Starts Claude Code by default. Requires the [`sbx` CLI](https://docs.docker.com/ai/sandboxes/get-started/).
