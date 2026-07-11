@@ -128,6 +128,16 @@ cd ~/claudecodeui && git pull && npm ci && npm run build && sudo systemctl resta
 
 > **Prerequisite:** [Claude Code](https://cloudcli.ai/docs) must be installed and authenticated (`claude login`) for the same user — the web UI drives the `claude` CLI.
 
+**Uninstall** (removes the service only; keeps your source and data by default):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/PointStarIL/claudecodeui/fix/rtl-chat/deploy/uninstall.sh | bash
+
+# full removal, including source + app data:
+PURGE_SOURCE=1 PURGE_DATA=1 \
+  bash <(curl -fsSL https://raw.githubusercontent.com/PointStarIL/claudecodeui/fix/rtl-chat/deploy/uninstall.sh)
+```
+
 #### Docker Sandboxes (Experimental)
 
 Run agents in isolated sandboxes with hypervisor-level isolation. Starts Claude Code by default. Requires the [`sbx` CLI](https://docs.docker.com/ai/sandboxes/get-started/).
