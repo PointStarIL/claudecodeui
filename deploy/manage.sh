@@ -16,6 +16,9 @@
 set -uo pipefail
 
 PORT="${PORT:-3008}"
+# Bind address. Default 0.0.0.0 (all interfaces). For a hardened box, set to a
+# WireGuard/VPN interface IP (VPN-only access) or 127.0.0.1 (local + reverse proxy).
+BIND_HOST="${BIND_HOST:-0.0.0.0}"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/claudecodeui}"
 BRANCH="${BRANCH:-fix/rtl-chat}"
 REPO_URL="${REPO_URL:-https://github.com/PointStarIL/claudecodeui.git}"
@@ -56,6 +59,16 @@ do_install() {
     command -v g++ >/dev/null || { log "Installing build tools..."; sudo apt-get install -y build-essential; }
   fi
 
+  # The node used for the BUILD is the node that must RUN the service — native
+  # addons (better-sqlite3, node-pty) are compiled for that node's ABI. Capturing
+  # it here avoids the classic "built with nvm node, run with /usr/bin/node" ABI
+  # crash on machines where `node` isn't NodeSource's /usr/bin/node.
+  local node_bin node_dir node_major
+  node_bin="$(command -v node)" || die "node not found after install step."
+  node_dir="$(dirname "$node_bin")"
+  node_major="$(node -p 'process.versions.node.split(".")[0]')"
+  [ "$node_major" -ge 20 ] || die "Node >= 20 required (found $(node -v)); better-sqlite3 won't build/run on older."
+
   # 2) claude CLI check
   local claude_bin="$RUN_HOME/.local/bin/claude"
   if ! command -v claude >/dev/null && [ ! -x "$claude_bin" ]; then
@@ -92,11 +105,11 @@ User=$RUN_USER
 WorkingDirectory=$INSTALL_DIR
 Environment=NODE_ENV=production
 Environment=SERVER_PORT=$PORT
-Environment=HOST=0.0.0.0
+Environment=HOST=$BIND_HOST
 Environment=HOME=$RUN_HOME
-Environment=PATH=$RUN_HOME/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Environment=PATH=$node_dir:$RUN_HOME/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 Environment=CLAUDE_CLI_PATH=$claude_bin
-ExecStart=/usr/bin/node dist-server/server/index.js
+ExecStart=$node_bin dist-server/server/index.js
 Restart=on-failure
 RestartSec=5
 
